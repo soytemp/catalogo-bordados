@@ -324,13 +324,64 @@
       btnWa.href = `https://wa.me/${CONFIG.whatsapp}?text=${msgWa}`;
       btnWa.style.display = "block";
       btn.style.display = "none";
+    try {
+      const response = await fetch(CONFIG.googleScriptUrl, {
+        method: "POST",
+        redirect: "follow",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const textResult = await response.text();
+      let resJson = {};
+      try {
+        resJson = JSON.parse(textResult);
+      } catch (e) {
+        console.log("Respuesta cruda de Google:", textResult);
+        throw new Error("Google no devolvió JSON válido");
+      }
+
+      if (resJson.status === "error") {
+        alert("Error interno en Google Sheets: " + resJson.message);
+        btn.disabled = false;
+        btn.innerText = "Registrar Pago y Generar Factura";
+        return;
+      }
+
+      const numFac = resJson.numFactura || "Registrado";
+      const pdfUrl = resJson.pdfUrl || "";
+
+      const banner = document.getElementById("exitoBanner");
+      banner.style.display = "block";
+      banner.innerHTML = `✅ <strong>¡Pago registrado! Factura N° ${numFac}</strong><br>Enviamos una copia PDF a <em>${payload.correo}</em>.`;
+
+      if (pdfUrl) {
+        const btnFac = document.getElementById("btnFactura");
+        btnFac.href = pdfUrl;
+        btnFac.style.display = "block";
+      }
+
+      const msgWa = encodeURIComponent(
+        `¡Hola! Registré mi pedido en la web:\n` +
+        `🧾 *Factura:* ${numFac}\n` +
+        `👤 *Cliente:* ${payload.nombre} (${payload.cedulaCliente})\n` +
+        `🛍️ *Pedido:* ${payload.pedido}\n` +
+        `💰 *Total:* Bs. ${totalBs} ($${payload.totalUsd})\n` +
+        `🔢 *Ref. Pago:* ${payload.referencia}` +
+        (pdfUrl ? `\n📄 *Factura PDF:* ${pdfUrl}` : "")
+      );
+      const btnWa = document.getElementById("btnWhatsApp");
+      btnWa.href = `https://wa.me/${CONFIG.whatsapp}?text=${msgWa}`;
+      btnWa.style.display = "block";
+      btn.style.display = "none";
     } catch (err) {
-      alert("Error al conectar con el servidor. Verifica la URL de Google Apps Script.");
+      console.error("Detalle del error:", err);
+      alert("Error al conectar: " + err.message);
       btn.disabled = false;
       btn.innerText = "Registrar Pago y Generar Factura";
     }
-  }
-
   const toBase64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
