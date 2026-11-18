@@ -117,21 +117,19 @@
   // ==========================================
   const CONFIG = {
     nombreTienda: "Insumos y Bordados Creativos",
-    whatsapp: "584121234567", // Tu número con código 58 sin el +
-    tasaRespaldo: 45.50,      // Tasa de emergencia por si falla la conexión al BCV
+    whatsapp: "584121234567",
+    tasaRespaldo: 45.50,
     pagoMovil: {
       banco: "0102 - Banco de Venezuela",
       cedula: "V-12345678",
       telefono: "0412-1234567"
     },
-    // Pega aquí la URL que te dio Google Apps Script en el Paso 1:
-    googleScriptUrl: "https://script.google.com/macros/s/AKfycbxiD2zbMk_TTPnCxsffi45SRFBfjaeLiu8Ex_fK7xrwoEfNjS-39po3eyEoPmsJsUA7/exec"
+    googleScriptUrl: "PEGA_AQUI_TU_URL_DE_GOOGLE_APPS_SCRIPT"
   };
 
   // ==========================================
   // 2. INVENTARIO DE PRODUCTOS (EDITA AQUÍ)
   // ==========================================
-  // Pon stock: 0 para que aparezca como AGOTADO automáticamente
   const PRODUCTOS = [
     { id: 1, nombre: "Cono de Hilo de Bordar (5000m)", categoria: "Hilos", precioUsd: 3.50, stock: 15, img: "https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400" },
     { id: 2, nombre: "Madeja Hilo Mouline", categoria: "Hilos", precioUsd: 1.20, stock: 30, img: "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=400" },
@@ -294,39 +292,6 @@
     try {
       const response = await fetch(CONFIG.googleScriptUrl, {
         method: "POST",
-        body: JSON.stringify(payload)
-      });
-      const resJson = await response.json();
-
-      const numFac = resJson.numFactura || "Registrado";
-      const pdfUrl = resJson.pdfUrl || "";
-
-      const banner = document.getElementById("exitoBanner");
-      banner.style.display = "block";
-      banner.innerHTML = `✅ <strong>¡Pago registrado! Factura N° ${numFac}</strong><br>Enviamos una copia PDF a <em>${payload.correo}</em>.`;
-
-      if (pdfUrl) {
-        const btnFac = document.getElementById("btnFactura");
-        btnFac.href = pdfUrl;
-        btnFac.style.display = "block";
-      }
-
-      const msgWa = encodeURIComponent(
-        `¡Hola! Registré mi pedido en la web:\n` +
-        `🧾 *Factura:* ${numFac}\n` +
-        `👤 *Cliente:* ${payload.nombre} (${payload.cedulaCliente})\n` +
-        `🛍️ *Pedido:* ${payload.pedido}\n` +
-        `💰 *Total:* Bs. ${totalBs} ($${payload.totalUsd})\n` +
-        `🔢 *Ref. Pago:* ${payload.referencia}` +
-        (pdfUrl ? `\n📄 *Factura PDF:* ${pdfUrl}` : "")
-      );
-      const btnWa = document.getElementById("btnWhatsApp");
-      btnWa.href = `https://wa.me/${CONFIG.whatsapp}?text=${msgWa}`;
-      btnWa.style.display = "block";
-      btn.style.display = "none";
-    try {
-      const response = await fetch(CONFIG.googleScriptUrl, {
-        method: "POST",
         redirect: "follow",
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
@@ -338,13 +303,12 @@
       let resJson = {};
       try {
         resJson = JSON.parse(textResult);
-      } catch (e) {
-        console.log("Respuesta cruda de Google:", textResult);
-        throw new Error("Google no devolvió JSON válido");
+      } catch (parseErr) {
+        throw new Error("Respuesta inesperada del servidor");
       }
 
       if (resJson.status === "error") {
-        alert("Error interno en Google Sheets: " + resJson.message);
+        alert("Error en Google Sheets: " + resJson.message);
         btn.disabled = false;
         btn.innerText = "Registrar Pago y Generar Factura";
         return;
@@ -357,7 +321,7 @@
       banner.style.display = "block";
       banner.innerHTML = `✅ <strong>¡Pago registrado! Factura N° ${numFac}</strong><br>Enviamos una copia PDF a <em>${payload.correo}</em>.`;
 
-      if (pdfUrl) {
+      if (pdfUrl && pdfUrl.startsWith("http")) {
         const btnFac = document.getElementById("btnFactura");
         btnFac.href = pdfUrl;
         btnFac.style.display = "block";
@@ -370,18 +334,19 @@
         `🛍️ *Pedido:* ${payload.pedido}\n` +
         `💰 *Total:* Bs. ${totalBs} ($${payload.totalUsd})\n` +
         `🔢 *Ref. Pago:* ${payload.referencia}` +
-        (pdfUrl ? `\n📄 *Factura PDF:* ${pdfUrl}` : "")
+        (pdfUrl && pdfUrl.startsWith("http") ? `\n📄 *Factura PDF:* ${pdfUrl}` : "")
       );
       const btnWa = document.getElementById("btnWhatsApp");
       btnWa.href = `https://wa.me/${CONFIG.whatsapp}?text=${msgWa}`;
       btnWa.style.display = "block";
       btn.style.display = "none";
     } catch (err) {
-      console.error("Detalle del error:", err);
       alert("Error al conectar: " + err.message);
       btn.disabled = false;
       btn.innerText = "Registrar Pago y Generar Factura";
     }
+  }
+
   const toBase64 = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
